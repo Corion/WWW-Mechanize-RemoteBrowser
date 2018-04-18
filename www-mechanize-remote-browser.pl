@@ -86,13 +86,12 @@ sub listen( $self, $port=$self->port ) {
                      }); # await browser.tabs.update({ "url": "about:blank" })' );
                      warn "Listening via $k";
                   } elsif( $p->{response} ) {
-                      print "Got response\n";
                       print Dumper $p;
                       my $id = $p->{messageIndex};
 
                       my $inReplyTo = delete $self->outstanding->{ $id };
                       if( $inReplyTo ) {
-                          print "Sending response to $id ($inReplyTo)\n";
+                          print sprintf "[ %03d - %s ] <= %s\n", $id, $inReplyTo, Dumper $p->{data};
                           eval { $inReplyTo->done( $p->{data} ); };
                           warn $@ if $@;
                       } else {
@@ -126,14 +125,13 @@ sub send( $self, $message ) {
     my $idx = $messageIndex++;
     $message->{messageIndex} = $idx;
     my $res = $self->outstanding->{$idx} = $self->future;
-    print sprintf "[ %03d - %s ]\n", $idx, $res;
     my $payload = encode_json( $message );
+    print sprintf "[ %03d - %s ] => %s\n", $idx, $res, $payload;
     $self->send_text( $payload );
     $res
 }
 
 sub send_text( $self, $message ) {
-    print "==> $message\n";
     $self->connection->send_text_frame( $message )
 }
 
