@@ -86,17 +86,7 @@ sub listen( $self, $port=$self->port ) {
                      }); # await browser.tabs.update({ "url": "about:blank" })' );
                      warn "Listening via $k";
                   } elsif( $p->{response} ) {
-                      print Dumper $p;
-                      my $id = $p->{messageIndex};
-
-                      my $inReplyTo = delete $self->outstanding->{ $id };
-                      if( $inReplyTo ) {
-                          print sprintf "[ %03d - %s ] <= %s\n", $id, $inReplyTo, Dumper $p->{data};
-                          eval { $inReplyTo->done( $p->{data} ); };
-                          warn $@ if $@;
-                      } else {
-                          print "Don't know recipient for [$id]\n";
-                      };
+                      $self->handle_response( $p );
 
   				 } else {
                      print "Unknown, ignored\n";
@@ -120,6 +110,20 @@ sub listen( $self, $port=$self->port ) {
         service => $port,
     );
 };
+
+sub handle_response( $self, $response ) {
+    print Dumper $response;
+    my $id = $response->{messageIndex};
+
+    my $inReplyTo = delete $self->outstanding->{ $id };
+    if( $inReplyTo ) {
+        print sprintf "[ %03d - %s ] <= %s\n", $id, $inReplyTo, Dumper $response->{data};
+        eval { $inReplyTo->done( $response->{data} ); };
+        warn $@ if $@;
+    } else {
+        print "Don't know recipient for [$id]\n";
+    };
+}
 
 sub send( $self, $message ) {
     my $idx = $messageIndex++;
