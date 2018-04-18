@@ -22,6 +22,8 @@ has 'loop' => is => 'lazy', default => sub { IO::Async::Loop->new() };
 has 'port' => is => 'ro', default => 3000;
 has 'connection' => is => 'rw';
 
+has 'outstanding' => is => 'ro', default => sub { {} };
+
 #sub connect( $self, $handler, $url, $logger=undef ) {
 #    $logger ||= sub{};
 #    die "Got an undefined endpoint" unless defined $url;
@@ -51,43 +53,67 @@ has 'connection' => is => 'rw';
 #    });
 #}
 
-my $i = 0;
+my $messageIndex = 0;
+
+my $k;
 sub listen( $self, $port=$self->port ) {
     my $server; $server = Net::Async::WebSocket::Server->new(
         on_client => sub {
-           my ( undef, $client ) = @_;
-		   $self->connection( $client );
+            my ( undef, $client ) = @_;
+		    $self->connection( $client );
 
-           $client->configure(
-              on_text_frame => sub {
+            $client->configure(
+               on_text_frame => sub {
                  my ( $s, $frame ) = @_;
-				 use Data::Dumper;
-				 if( length( $frame ) == 4 and $frame eq 'ping' ) { # yeah, hand-rolled pings
-                    $self->connection->send_text_frame( 'pong' );
-                    return
-                 };
-				 warn Dumper $frame;
-				 my $p = decode_json( $frame );
-				 if( $p->{clientType}) {
-                     # initial client connected
-					 $self->send( {"success" => JSON::true() } ); # await browser.tabs.update({ "url": "about:blank" })' );
-                 } elsif( $p->{response} ) {
-                     print "Got response\n";
-                     print Dumper $frame;
-                     
-				 } else {
-				     # Try to send a command
-					 #$self->send( {"success" => JSON::true() } ); # await browser.tabs.update({ "url": "about:blank" })' );
-                     # browser.tabs.update({ url: 'https://intoli.com/blog' })
-					 #$self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, messageIndex => $i++, response => JSON::false() } );
-                     # get tab id
-					 $self->send( {"channel" => "evaluateInContent", data => {'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, messageIndex => $i++, response => JSON::false(), id => 1 } );
-				 };
-              },
-           );
-		   
+  				 if( length( $frame ) == 4 and $frame eq 'ping' ) { # yeah, hand-rolled pings
+                     $self->connection->send_text_frame( 'pong' );
+                     return
+                  };
+  				 my $p = decode_json( $frame );
+  				 if( $p->{clientType}) {
+                      # initial client connected
+  					 $self->send( {"success" => JSON::true() } );
+                     $k =
+                     $self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, response => JSON::false() } )
+                     ->then( sub {
+                        my( $data ) = @_;
+                        #warn "Running in page";
+                        warn Dumper $data;
+                        $self->send( {"channel" => "evaluateInContent", data => {tabId => $data->{result}->{id}, 'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false() } );
+                     })->catch( sub {
+                         warn "*** Error:";
+                         warn Dumper \@_;
+                     }); # await browser.tabs.update({ "url": "about:blank" })' );
+                     warn "Listening via $k";
+                  } elsif( $p->{response} ) {
+                      print "Got response\n";
+                      print Dumper $p;
+                      my $id = $p->{messageIndex};
+
+                      my $inReplyTo = delete $self->outstanding->{ $id };
+                      if( $inReplyTo ) {
+                          print "Sending response to $id ($inReplyTo)\n";
+                          eval { $inReplyTo->done( $p->{data} ); };
+                          warn $@ if $@;
+                      } else {
+                          print "Don't know recipient for [$id]\n";
+                      };
+
+  				 } else {
+                     print "Unknown, ignored\n";
+                     warn Dumper $frame;
+  				     # Try to send a command
+  					 #$self->send( {"success" => JSON::true() } ); # await browser.tabs.update({ "url": "about:blank" })' );
+                      # browser.tabs.update({ url: 'https://intoli.com/blog' })
+  					 #$self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, messageIndex => $i++, response => JSON::false() } );
+                      # get tab id
+  					 #$self->send( {"channel" => "evaluateInContent", data => {'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false(), id => 1 } );
+  				 };
+               },
+            );
+
         }
-     );
+    );
 
     $self->loop->add( $server );
 
@@ -97,8 +123,13 @@ sub listen( $self, $port=$self->port ) {
 };
 
 sub send( $self, $message ) {
+    my $idx = $messageIndex++;
+    $message->{messageIndex} = $idx;
+    my $res = $self->outstanding->{$idx} = $self->future;
+    print sprintf "[ %03d - %s ]\n", $idx, $res;
     my $payload = encode_json( $message );
-    $self->send_text( $payload )
+    $self->send_text( $payload );
+    $res
 }
 
 sub send_text( $self, $message ) {
@@ -114,8 +145,7 @@ sub close( $self ) {
 }
 
 sub future( $self ) {
-    my $res = $self->loop->new_future;
-    return $res
+    $self->loop->new_future;
 }
 
 sub connectionUrl( $self ) {
