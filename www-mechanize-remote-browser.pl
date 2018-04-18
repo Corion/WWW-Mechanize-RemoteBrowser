@@ -57,6 +57,7 @@ my $messageIndex = 0;
 
 my $k;
 sub listen( $self, $port=$self->port ) {
+    my $client_connected = $self->future;
     my $server; $server = Net::Async::WebSocket::Server->new(
         on_client => sub {
             my ( undef, $client ) = @_;
@@ -72,19 +73,10 @@ sub listen( $self, $port=$self->port ) {
   				 my $p = decode_json( $frame );
   				 if( $p->{clientType}) {
                       # initial client connected
+
   					 $self->send( {"success" => JSON::true() } );
-                     $k =
-                     $self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, response => JSON::false() } )
-                     ->then( sub {
-                        my( $data ) = @_;
-                        #warn "Running in page";
-                        warn Dumper $data;
-                        $self->send( {"channel" => "evaluateInContent", data => {tabId => $data->{result}->{id}, 'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false() } );
-                     })->catch( sub {
-                         warn "*** Error:";
-                         warn Dumper \@_;
-                     }); # await browser.tabs.update({ "url": "about:blank" })' );
-                     warn "Listening via $k";
+                     $k = $self->setup_connection( $client );
+                     $client_connected->done($p);
                   } elsif( $p->{response} ) {
                       $self->handle_response( $p );
 
@@ -109,7 +101,23 @@ sub listen( $self, $port=$self->port ) {
     $server->listen(
         service => $port,
     );
+
+
+    $client_connected
 };
+
+sub setup_connection( $self, $connection ) {
+    $self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, response => JSON::false() } )
+    ->then( sub {
+        my( $data ) = @_;
+        #warn "Running in page";
+        warn Dumper $data;
+        $self->send( {"channel" => "evaluateInContent", data => {tabId => $data->{result}->{id}, 'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false() } );
+    })->catch( sub {
+         warn "*** Error:";
+         warn Dumper \@_;
+    }); # await browser.tabs.update({ "url": "about:blank" })' );
+}
 
 sub handle_response( $self, $response ) {
     print Dumper $response;
