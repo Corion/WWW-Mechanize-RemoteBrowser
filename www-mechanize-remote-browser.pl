@@ -5,14 +5,18 @@ no warnings 'experimental::signatures';
 use feature 'signatures';
 use IO::Async;
 use Future;
-use IO::Async::Loop;
-use Net::Async::WebSocket::Server;
 Net::Async::WebSocket::Server->VERSION(0.12); # fixes some errors with masked frames
 
 use JSON 'encode_json', 'decode_json';
 
 use Scalar::Util 'weaken';
 
+# This should go into ::Transport so we can support AnyEvent directly as well
+# later
+use IO::Async::Loop;
+use Net::Async::WebSocket::Server;
+
+use Data::Dumper;
 
 has 'loop' => is => 'lazy', default => sub { IO::Async::Loop->new() };
 has 'port' => is => 'ro', default => 3000;
