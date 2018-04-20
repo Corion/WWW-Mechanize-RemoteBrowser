@@ -1,0 +1,22 @@
+# Prototype of WWW::Mechanize::RemoteBrowser
+
+This is a rough (rough!) prototype of WWW::Mechanize automating any browser that
+can run Javascript and supports Web Extensions. It needs the [Remote Browser](1)
+extension.
+
+If this prototype turns out successful and usable, this repo and program will
+likely become the Perl module WWW::Mechanize::RemoteBrowser.
+
+# Tested browsers
+
+* [x] Firefox 58
+
+* [x] Chrome / Chromium 67
+
+* [ ] Chrome Android (untested)
+
+* [ ] Microsoft Edge (doesn't work because the extension fails)
+
+* [ ] Safari (untested)
+
+[1] https://github.com/intoli/remote-browser/blob/master/README.md
