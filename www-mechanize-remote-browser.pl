@@ -161,6 +161,14 @@ sub connectionUrl( $self ) {
     sprintf 'ws://localhost:%d', $self->port;
 };
 
+sub evaluateInBackground( $self, $js, @args ) {
+    $self->send( { "channel" => "evaluateInBackground", data => {'asyncFunction' => $js, args => \@args, response => JSON::false() }} );
+}
+
+sub evaluateInContent( $self, $js, @args ) {
+    $self->send( { "channel" => "evaluateInContent", data => {'asyncFunction' => $js, args => \@args, response => JSON::false() } });
+}
+
 package main;
 use strict;
 
