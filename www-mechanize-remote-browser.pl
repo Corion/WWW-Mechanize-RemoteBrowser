@@ -178,8 +178,8 @@ sub evaluateInBackground( $self, $js, @args ) {
     $self->send( { "channel" => "evaluateInBackground", data => {'asyncFunction' => $js, args => \@args, response => JSON::false() }} );
 }
 
-sub evaluateInContent( $self, $js, @args ) {
-    $self->send( { "channel" => "evaluateInContent", data => {'asyncFunction' => $js, args => \@args, response => JSON::false() } });
+sub evaluateInContent( $self, $tab, $js, @args ) {
+    $self->send( { "channel" => "evaluateInContent", data => {'asyncFunction' => $js, args => \@args, response => JSON::false(), tabId => $tab->{id} } });
 }
 
 package main;
