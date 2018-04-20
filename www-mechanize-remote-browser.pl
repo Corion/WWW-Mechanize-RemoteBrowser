@@ -176,14 +176,26 @@ use feature 'signatures';
 
 my $b = RemoteBrowser->new();
 my $url = $b->connectionUrl;
-$b->listen()->get;
+my $client = $b->listen();
 
 my $sessionId = 666;
 my $browserUrl = "file:///?remoteBrowserUrl=${url}&remoteBrowserSessionId=${sessionId}";
 
 print "$browserUrl\n";
 
+sub content_future( $self ) {
+    $self->evaluateInContent('document.querySelector("body"))');
+}
+
+sub content( $self ) {
+    content_future($self)->get
+}
+
 #$b->connect(undef, 'ws://localhost:8000')->get;
+
+my $printed = $client->then(sub {
+    print content($b);
+});
 
 $b->loop->run;
 
