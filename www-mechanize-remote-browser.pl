@@ -146,6 +146,19 @@ sub send_text( $self, $message ) {
     $self->connection->send_text_frame( $message )
 }
 
+sub reply( $self, $message, $reply ) {
+    my $idx = $message->{messageIndex}
+        or croak "Can't reply without a messageIndex token";
+    my $r = {
+        channel => $message->{channel},
+        data => $reply,
+        reply => JSON::true(),
+    };
+    my $payload = encode_json( $r );
+    print sprintf "[ %03d - ] => %s\n", $idx, $payload;
+    $self->send_text( $payload );
+}
+
 sub close( $self ) {
     my $c = delete $self->{connection};
     $c->finish
