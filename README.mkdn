@@ -1,7 +1,8 @@
 # Prototype of WWW::Mechanize::RemoteBrowser
 
 This is a rough (rough!) prototype of WWW::Mechanize automating any browser that
-can run Javascript and supports Web Extensions. It needs the [Remote Browser](1)
+can run Javascript and supports Web Extensions. It needs the
+[Remote Browser](https://github.com/intoli/remote-browser)
 extension.
 
 If this prototype turns out successful and usable, this repo and program will
@@ -50,7 +51,9 @@ to the `dist/extension` directory where you built the extension
 
 1. Build it according to its instructions
 
-1. Follow [the instructions](2) for building Chrome extensions for Edge
+1. Follow
+[the instructions](https://docs.microsoft.com/en-us/microsoft-edge/extensions/guides/porting-chrome-extensions)
+for building Chrome extensions for Edge
 
 1. Note that the extension currently fails to work despite the conversion
 passing without errors
@@ -63,5 +66,3 @@ to be done
 
 to be done
 
-[1] https://github.com/intoli/remote-browser/blob/master/README.md
-[2] https://docs.microsoft.com/en-us/microsoft-edge/extensions/guides/porting-chrome-extensions
