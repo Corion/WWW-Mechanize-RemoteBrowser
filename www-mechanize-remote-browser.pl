@@ -100,9 +100,9 @@ sub listen( $self, $port=$self->port ) {
 
     $server->listen(
         service => $port,
-    );
-
-    $client_connected
+    )->then( sub {
+        $client_connected
+    })
 };
 
 sub setup_connection( $self, $connection ) {
