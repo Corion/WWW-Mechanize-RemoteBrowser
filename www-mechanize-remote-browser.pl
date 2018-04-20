@@ -183,6 +183,20 @@ my $browserUrl = "file:///?remoteBrowserUrl=${url}&remoteBrowserSessionId=${sess
 
 print "$browserUrl\n";
 
+sub eval_in_page( $self, $js, @args ) {
+    my $inject = qq((function(args) {\n$js\n})());
+    $inject =~ s!\n!\\n!g;
+    $inject =~ s!"!\\"!g;
+    my $code = <<JS;
+var script = document.createElement('script');
+script.textContent = "$inject";
+(document.head||document.documentElement).appendChild(script);
+script.remove();
+JS
+    $self->evaluateInContent($inject);
+    # https://stackoverflow.com/questions/9515704/insert-code-into-the-page-context-using-a-content-script
+}
+
 sub content_future( $self ) {
     $self->evaluateInContent('document.querySelector("body"))');
 }
@@ -190,6 +204,21 @@ sub content_future( $self ) {
 sub content( $self ) {
     content_future($self)->get
 }
+
+# load URL and wait for the tab to finish loading
+# also, Window.onready
+#function createTab (url) {
+#    return new Promise(resolve => {
+#        chrome.tabs.create({url}, async tab => {
+#            chrome.tabs.onUpdated.addListener(function listener (tabId, info) {
+#                if (info.status === 'complete' && tabId === tab.id) {
+#                    chrome.tabs.onUpdated.removeListener(listener);
+#                    resolve(tab);
+#                }
+#            });
+#        });
+#    });
+#}
 
 #$b->connect(undef, 'ws://localhost:8000')->get;
 
