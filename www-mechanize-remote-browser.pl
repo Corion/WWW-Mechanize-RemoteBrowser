@@ -75,7 +75,7 @@ sub listen( $self, $port=$self->port ) {
                       # initial client connected
 
   					 $self->send( {"success" => JSON::true() } );
-                     $k = $self->setup_connection( $client );
+                     #$k = $self->setup_connection( $client );
                      $client_connected->done($self, $client, $p );
                   } elsif( $p->{response} ) {
                       $self->handle_response( $p );
