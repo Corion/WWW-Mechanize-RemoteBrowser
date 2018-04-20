@@ -5,6 +5,7 @@ no warnings 'experimental::signatures';
 use feature 'signatures';
 use IO::Async;
 use Future;
+use Carp 'croak';
 Net::Async::WebSocket::Server->VERSION(0.12); # fixes some errors with masked frames
 
 use JSON 'encode_json', 'decode_json';
@@ -34,8 +35,8 @@ has 'outstanding' => is => 'ro', default => sub { {} };
 #        # Kick off the continous polling
 #        on_frame => sub {
 #            my( $connection, $message )=@_;
-#			use Data::Dumper;
-#			warn Dumper \@_;
+#           use Data::Dumper;
+#           warn Dumper \@_;
 #            #$handler->on_response( $connection, $message )
 #        },
 #    );
@@ -61,35 +62,40 @@ sub listen( $self, $port=$self->port ) {
     my $server; $server = Net::Async::WebSocket::Server->new(
         on_client => sub {
             my ( undef, $client ) = @_;
-		    $self->connection( $client );
+            $self->connection( $client );
 
             $client->configure(
                on_text_frame => sub {
                  my ( $s, $frame ) = @_;
-  				 if( length( $frame ) == 4 and $frame eq 'ping' ) { # yeah, hand-rolled pings
+                 if( length( $frame ) == 4 and $frame eq 'ping' ) { # yeah, hand-rolled pings
                      $self->connection->send_text_frame( 'pong' );
                      return
                   };
-  				 my $p = decode_json( $frame );
-  				 if( $p->{clientType}) {
-                      # initial client connected
+                 my $p = decode_json( $frame );
+                 if( $p->{clientType}) {
+                     $self->connection->send_text_frame( encode_json {"success" => JSON::true(), reply => JSON::true } );
 
-  					 $self->send( {"success" => JSON::true() } );
+                 } elsif( $p->{channel} eq 'initialConnection') {
+                     # initial client connected
+                     $messageIndex = $p->{messageIndex};
+
+                     #$self->reply( $p, {"success" => JSON::true(), reply => JSON::true } );
                      #$k = $self->setup_connection( $client );
+                     print "Connected\n";
                      $client_connected->done($self, $client, $p );
                   } elsif( $p->{response} ) {
                       $self->handle_response( $p );
 
-  				 } else {
+                 } else {
                      print "Unknown, ignored\n";
                      warn Dumper $frame;
-  				     # Try to send a command
-  					 #$self->send( {"success" => JSON::true() } ); # await browser.tabs.update({ "url": "about:blank" })' );
+                     # Try to send a command
+                     #$self->send( {"success" => JSON::true() } ); # await browser.tabs.update({ "url": "about:blank" })' );
                       # browser.tabs.update({ url: 'https://intoli.com/blog' })
-  					 #$self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, messageIndex => $i++, response => JSON::false() } );
+                     #$self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, messageIndex => $i++, response => JSON::false() } );
                       # get tab id
-  					 #$self->send( {"channel" => "evaluateInContent", data => {'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false(), id => 1 } );
-  				 };
+                     #$self->send( {"channel" => "evaluateInContent", data => {'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false(), id => 1 } );
+                 };
                },
             );
 
@@ -105,13 +111,22 @@ sub listen( $self, $port=$self->port ) {
     })
 };
 
-sub setup_connection( $self, $connection ) {
+sub addTab_future( $self, $url='about:blank' ) {
     $self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, response => JSON::false() } )
+    ->then(sub($p) {
+        #warn Dumper $p->{result};
+        $self->{tab} = $p->{result};
+        $self->future->done( $p->{result} )
+    })
+}
+
+sub setup_connection( $self, $connection ) {
+    $self->addTab_future('https://datenzoo.de/')
     ->then( sub {
-        my( $data ) = @_;
+        my( $tab ) = @_;
         #warn "Running in page";
-        warn Dumper $data;
-        $self->send( {"channel" => "evaluateInContent", data => {tabId => $data->{result}->{id}, 'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false() } );
+        warn Dumper $tab;
+        $self->send( {"channel" => "evaluateInContent", data => {tabId => $tab->{id}, 'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false() } );
     })->catch( sub {
          warn "*** Error:";
          warn Dumper \@_;
@@ -186,6 +201,7 @@ package main;
 use strict;
 no warnings 'experimental::signatures';
 use feature 'signatures';
+use Data::Dumper;
 
 my $b = RemoteBrowser->new();
 my $url = $b->connectionUrl;
@@ -210,12 +226,12 @@ JS
     # https://stackoverflow.com/questions/9515704/insert-code-into-the-page-context-using-a-content-script
 }
 
-sub content_future( $self ) {
-    $self->evaluateInContent('document.querySelector("body"))');
+sub content_future( $self, $tab ) {
+    $self->evaluateInContent($tab, 'async () => (document.querySelector("body"))');
 }
 
-sub content( $self ) {
-    content_future($self)->get
+sub content( $self, $tab=$self->{tab} ) {
+    content_future($self, $tab)->get
 }
 
 # load URL and wait for the tab to finish loading
@@ -235,8 +251,15 @@ sub content( $self ) {
 
 #$b->connect(undef, 'ws://localhost:8000')->get;
 
-my $printed = $client->then(sub {
+my $printed = $client->then(sub( $self, $conn, $p ) {
+    print "Setting up\n";
+    $self->setup_connection( $conn )
+})->then(sub {
+    print "Connected and set up\n";
     print content($b);
+    Future->done()
+})->catch(sub {
+    warn Dumper \@_;
 });
 
 $b->loop->run;
