@@ -19,4 +19,49 @@ likely become the Perl module WWW::Mechanize::RemoteBrowser.
 
 * [ ] Safari (untested)
 
+# Installing the extension
+
+I plan to make ready-made files of the remote-browser distribution available
+for easy installation and use. Releases to the respective app stores of each
+browsers are not immediately planned.
+
+## Firefox
+
+1. Clone remote-browser
+
+1. Build it according to its instructions
+
+1. Package the dist/extension directory into a zip file
+
+1. Install that zip file locally in Firefox
+
+## Chrome
+
+1. Clone remote-browser
+
+1. Build it according to its instructions
+
+1. (Re)launch Chrome using the `--load-extension=...` command, where ... points
+to the `dist/extension` directory where you built the extension
+
+## Microsoft Edge
+
+1. Clone remote-browser
+
+1. Build it according to its instructions
+
+1. Follow [the instructions](2) for building Chrome extensions for Edge
+
+1. Note that the extension currently fails to work despite the conversion
+passing without errors
+
+## Chrome on Android
+
+to be done
+
+## Safari
+
+to be done
+
 [1] https://github.com/intoli/remote-browser/blob/master/README.md
+[2] https://docs.microsoft.com/en-us/microsoft-edge/extensions/guides/porting-chrome-extensions
