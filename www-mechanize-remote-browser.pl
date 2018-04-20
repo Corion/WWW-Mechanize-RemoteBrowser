@@ -171,6 +171,8 @@ sub evaluateInContent( $self, $js, @args ) {
 
 package main;
 use strict;
+no warnings 'experimental::signatures';
+use feature 'signatures';
 
 my $b = RemoteBrowser->new();
 my $url = $b->connectionUrl;
