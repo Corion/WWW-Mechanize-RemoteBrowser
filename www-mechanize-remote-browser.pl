@@ -217,6 +217,10 @@ no warnings 'experimental::signatures';
 use feature 'signatures';
 use Data::Dumper;
 
+use Test::HTTP::LocalServer;
+
+my $server = Test::HTTP::LocalServer->spawn();
+
 my $b = RemoteBrowser->new();
 my $url = $b->connectionUrl;
 my $client = $b->listen();
@@ -241,7 +245,7 @@ JS
 }
 
 sub content_future( $self, $tab ) {
-    $self->evaluateInContent($tab, 'async () => (document.querySelector("body"))');
+    $self->evaluateInContent($tab, 'async () => (JSON.stringify(document.querySelector("html")))');
 }
 
 sub content( $self, $tab=$self->{tab} ) {
@@ -266,11 +270,20 @@ sub content( $self, $tab=$self->{tab} ) {
 #$b->connect(undef, 'ws://localhost:8000')->get;
 
 my $printed = $client->then(sub( $self, $conn, $p ) {
-    print "Setting up\n";
-    $self->setup_connection( $conn )
+    #print "Setting up\n";
+    $self->setup_connection( $conn, url => $server->url )
 })->then(sub {
     print "Connected and set up\n";
-    print content($b);
+
+    #print Dumper content($b);
+
+    #is_deeply $b->evaluateInContent( $b->{tab}, 'async () => ( {"foo":"bar"} )' )->get, {foo=>'bar'};
+    #is $b->evaluateInContent( $b->{tab}, 'async () => ( 1+1 )' )->get, 2;
+    $b->evaluateInContent( $b->{tab}, 'async (args) => ( args )', {foo => { bar => "baz" }} );
+})->then( sub( $res ) {
+    warn Dumper $res;
+
+    $b->loop->stop;
     Future->done()
 })->catch(sub {
     warn Dumper \@_;
