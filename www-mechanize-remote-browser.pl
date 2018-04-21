@@ -283,7 +283,7 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
 
     #is_deeply $b->evaluateInContent( $b->{tab}, 'async () => ( {"foo":"bar"} )' )->get, {foo=>'bar'};
     #is $b->evaluateInContent( $b->{tab}, 'async () => ( 1+1 )' )->get, 2;
-    $b->evaluateInContent( $b->{tab}, 'async (args) => ( args )', {foo => { bar => "baz" }} );
+    #is_deeply $b->evaluateInContent( $b->{tab}, 'async (args) => ( args )', {foo => { bar => "baz" }} ), {foo => { bar => "baz" }};
 })->then( sub( $res ) {
     warn Dumper $res;
     Future->done()
