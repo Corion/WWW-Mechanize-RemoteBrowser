@@ -286,9 +286,10 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
     $b->evaluateInContent( $b->{tab}, 'async (args) => ( args )', {foo => { bar => "baz" }} );
 })->then( sub( $res ) {
     warn Dumper $res;
-
-    $b->loop->stop;
     Future->done()
+
+})->on_ready(sub {
+    $b->loop->stop;
 })->catch(sub {
     warn Dumper \@_;
 });
