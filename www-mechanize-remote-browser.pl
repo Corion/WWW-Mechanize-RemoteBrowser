@@ -299,5 +299,7 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
 
 $b->loop->run;
 
+$server->kill;
+
 # add contentScript to retrieve the DOM of a page
 # (and other window properties)
