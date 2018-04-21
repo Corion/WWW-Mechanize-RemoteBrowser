@@ -194,8 +194,10 @@ sub evaluateInBackground( $self, $js, @args ) {
     ->then(sub( $p ) {
         if( $p->{result}) {
             return Future->done( $p->{result})
+        } elsif( $p->{error} ) {
+            return Future->fail( remoteError => %{ $p->{error} });
         } else {
-            die remoteError => $p
+            return Future->fail( remoteError => $p );
         }
     });
 }
@@ -205,8 +207,10 @@ sub evaluateInContent( $self, $tab, $js, @args ) {
     ->then(sub( $p ) {
         if( $p->{result}) {
             return Future->done( $p->{result})
+        } elsif( $p->{error} ) {
+            return Future->fail( remoteError => %{ $p->{error} });
         } else {
-            die remoteError => $p
+            return Future->fail( remoteError => $p );
         }
     })
 }
