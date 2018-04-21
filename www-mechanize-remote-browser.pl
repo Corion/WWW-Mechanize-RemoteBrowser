@@ -210,7 +210,7 @@ sub evaluateInContent( $self, $tab, $js, @args ) {
         } elsif( $p->{error} ) {
             return Future->fail( remoteError => %{ $p->{error} });
         } else {
-            return Future->fail( remoteError => $p );
+            return Future->fail( remoteWeirdError => $p );
         }
     })
 }
@@ -284,6 +284,8 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
     #is_deeply $b->evaluateInContent( $b->{tab}, 'async () => ( {"foo":"bar"} )' )->get, {foo=>'bar'};
     #is $b->evaluateInContent( $b->{tab}, 'async () => ( 1+1 )' )->get, 2;
     #is_deeply $b->evaluateInContent( $b->{tab}, 'async (args) => ( args )', {foo => { bar => "baz" }} ), {foo => { bar => "baz" }};
+    #fails_ok $b->evaluateInContent( $b->{tab}, '(args) => ( referenceError )' ), {remoteError, name => 'RemoteError', { name => 'ReferenceError' }};
+    $b->evaluateInContent( $b->{tab}, '(args) => ( window.title )' );
 })->then( sub( $res ) {
     warn Dumper $res;
     Future->done()
@@ -291,6 +293,7 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
 })->on_ready(sub {
     $b->loop->stop;
 })->catch(sub {
+    warn "*** Error";
     warn Dumper \@_;
 });
 
