@@ -112,25 +112,25 @@ sub listen( $self, $port=$self->port ) {
 };
 
 sub addTab_future( $self, $url='about:blank' ) {
-    $self->send( {"channel" => "evaluateInBackground", data => {'asyncFunction' => 'async (args) => (browser.tabs.create(args))', args =>[{ "url" => "https://datenzoo.de" }]}, response => JSON::false() } )
-    ->then(sub($p) {
+    $self->evaluateInBackground( 'async (args) => (browser.tabs.create(args))', { "url" => "$url" } )
+    ->then(sub($tab) {
         #warn Dumper $p->{result};
-        $self->{tab} = $p->{result};
-        $self->future->done( $p->{result} )
+        $self->{tab} = $tab;
+        $self->future->done( $tab )
     })
 }
 
-sub setup_connection( $self, $connection ) {
-    $self->addTab_future('https://datenzoo.de/')
+sub setup_connection( $self, $connection, %options ) {
+    $self->addTab_future($options{ url })
     ->then( sub {
         my( $tab ) = @_;
         #warn "Running in page";
-        warn Dumper $tab;
-        $self->send( {"channel" => "evaluateInContent", data => {tabId => $tab->{id}, 'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false() } );
+        #$self->send( {"channel" => "evaluateInContent", data => {tabId => $tab->{id}, 'asyncFunction' => 'async (args) => (window.alert(args))', args =>["Hello"]}, response => JSON::false() } );
+        Future->done( $tab )
     })->catch( sub {
          warn "*** Error:";
          warn Dumper \@_;
-    }); # await browser.tabs.update({ "url": "about:blank" })' );
+    });
 }
 
 sub handle_response( $self, $response ) {
@@ -190,11 +190,25 @@ sub connectionUrl( $self ) {
 };
 
 sub evaluateInBackground( $self, $js, @args ) {
-    $self->send( { "channel" => "evaluateInBackground", data => {'asyncFunction' => $js, args => \@args, response => JSON::false() }} );
+    $self->send( { "channel" => "evaluateInBackground", data => {'asyncFunction' => $js, args => \@args, response => JSON::false() }} )
+    ->then(sub( $p ) {
+        if( $p->{result}) {
+            return Future->done( $p->{result})
+        } else {
+            die remoteError => $p
+        }
+    });
 }
 
 sub evaluateInContent( $self, $tab, $js, @args ) {
-    $self->send( { "channel" => "evaluateInContent", data => {'asyncFunction' => $js, args => \@args, response => JSON::false(), tabId => $tab->{id} } });
+    $self->send( { "channel" => "evaluateInContent", data => {'asyncFunction' => $js, args => \@args, response => JSON::false(), tabId => $tab->{id} } })
+    ->then(sub( $p ) {
+        if( $p->{result}) {
+            return Future->done( $p->{result})
+        } else {
+            die remoteError => $p
+        }
+    })
 }
 
 package main;
