@@ -221,6 +221,7 @@ no warnings 'experimental::signatures';
 use feature 'signatures';
 use Data::Dumper;
 
+use Path::Class 'dir';
 use Test::HTTP::LocalServer;
 
 my $server = Test::HTTP::LocalServer->spawn();
@@ -229,10 +230,19 @@ my $b = RemoteBrowser->new();
 my $url = $b->connectionUrl;
 my $client = $b->listen();
 
-my $sessionId = 666;
-my $browserUrl = "file:///?remoteBrowserUrl=${url}&remoteBrowserSessionId=${sessionId}";
+my $sessionId = time();
+#$url =~ s!([:/])!sprintf '%%%02x', ord $1!ge;
+my $browserUrl = "https://example.com?remoteBrowserUrl=${url}&remoteBrowserSessionId=${sessionId}";
+#my $browserUrl = "https://datenzoo.de?remoteBrowserUrl=${url}&remoteBrowserSessionId=${sessionId}";
 
 print "$browserUrl\n";
+
+my $chrome_exe = 'C:/Users/Corion/Projekte/WWW-Mechanize-Chrome/chrome-versions/chrome-win32-67.0.3394.0/chrome.exe';
+my $extension_path = dir('dist/extension')->absolute();
+my @cmd = ($chrome_exe, "--profile=.\\profile", "--load-extension=$extension_path", qq{"$browserUrl"});
+my $cmd = join " ", @cmd;
+warn "[[$cmd]]";
+system 1, $cmd;
 
 sub eval_in_page( $self, $js, @args ) {
     my $inject = qq((function(args) {\n$js\n})());
@@ -285,13 +295,25 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
     #is $b->evaluateInContent( $b->{tab}, 'async () => ( 1+1 )' )->get, 2;
     #is_deeply $b->evaluateInContent( $b->{tab}, 'async (args) => ( args )', {foo => { bar => "baz" }} ), {foo => { bar => "baz" }};
     #fails_ok $b->evaluateInContent( $b->{tab}, '(args) => ( referenceError )' ), {remoteError, name => 'RemoteError', { name => 'ReferenceError' }};
-    $b->evaluateInContent( $b->{tab}, '(args) => ( window.title )' );
-})->then( sub( $res ) {
-    warn Dumper $res;
-    Future->done()
+    #$b->evaluateInContent( $b->{tab}, 'async () => ( window )' );
+    #$b->evaluateInContent( $b->{tab}, 'async () => ( document.body.style["background-color"] = "blue" )' );
 
-})->on_ready(sub {
+    content_future( $b, $b->{tab} );
+
+    #$b->evaluateInBackground( <<'JS', $b->{tab}->{id} );
+    #    async function (tabId) {
+    #        return new Promise(function( resolve, reject ) {
+    #            browser.tabs.get(tabId, resolve)
+    #        });
+    #    };
+#JS
+
+})->then( sub( $res ) {
+    $b->connection->send_close_frame;
+})->then(sub {
+    warn "Stopping loop";
     $b->loop->stop;
+    Future->done;
 })->catch(sub {
     warn "*** Error";
     warn Dumper \@_;
@@ -300,6 +322,6 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
 $b->loop->run;
 
 $server->kill;
+wait;
 
-# add contentScript to retrieve the DOM of a page
 # (and other window properties)
