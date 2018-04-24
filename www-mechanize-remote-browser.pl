@@ -249,7 +249,7 @@ JS
 }
 
 sub content_future( $self, $tab ) {
-    $self->evaluateInContent($tab, 'async () => (JSON.stringify(document.querySelector("html")))');
+    $self->evaluateInContent($tab, 'async () => (document.documentElement.outerHTML)');
 }
 
 sub content( $self, $tab=$self->{tab} ) {
