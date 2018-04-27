@@ -203,7 +203,7 @@ sub evaluateInBackground( $self, $js, @args ) {
 }
 
 sub evaluateInContent( $self, $tab, $js, @args ) {
-    $self->send( { "channel" => "evaluateInContent", data => {'asyncFunction' => $js, args => \@args, response => JSON::false(), tabId => $tab->{id} } })
+    $self->send( { "channel" => "evaluateInContent", data => {'asyncFunction' => $js, args => \@args, tabId => $tab->{id} } })
     ->then(sub( $p ) {
         if( $p->{result}) {
             return Future->done( $p->{result})
