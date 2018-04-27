@@ -268,6 +268,7 @@ sub content( $self, $tab=$self->{tab} ) {
 
 # load URL and wait for the tab to finish loading
 # also, Window.onready
+# also webRequest API
 #function createTab (url) {
 #    return new Promise(resolve => {
 #        chrome.tabs.create({url}, async tab => {
