@@ -298,8 +298,10 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
     #fails_ok $b->evaluateInContent( $b->{tab}, '(args) => ( referenceError )' ), {remoteError, name => 'RemoteError', { name => 'ReferenceError' }};
     #$b->evaluateInContent( $b->{tab}, 'async () => ( window )' );
     #$b->evaluateInContent( $b->{tab}, 'async () => ( document.body.style["background-color"] = "blue" )' );
+    $b->evaluateInContent( $b->{tab}, 'async () => ( document.querySelector("a").click() )' );
 
-    content_future( $b, $b->{tab} );
+
+    #content_future( $b, $b->{tab} );
 
     #$b->evaluateInBackground( <<'JS', $b->{tab}->{id} );
     #    async function (tabId) {
@@ -310,6 +312,7 @@ my $printed = $client->then(sub( $self, $conn, $p ) {
 #JS
 
 })->then( sub( $res ) {
+    sleep 10;
     $b->connection->send_close_frame;
 })->then(sub {
     warn "Stopping loop";
